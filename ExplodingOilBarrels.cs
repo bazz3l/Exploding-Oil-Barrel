@@ -12,6 +12,34 @@ namespace Oxide.Plugins
         string BarrelEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
         string ShakeEffect  = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
 
+        #region Config
+        private PluginConfig configData;
+
+        protected override void LoadDefaultConfig()
+        {
+            Config.WriteObject(GetDefaultConfig(), true);
+        }
+
+        private PluginConfig GetDefaultConfig()
+        {
+            return new PluginConfig
+            {
+                ShakeScreen = true
+            };
+        }
+
+        private class PluginConfig
+        {
+            public bool ShakeScreen;
+        }
+       #endregion 
+
+       #region Oxide
+       private void Init()
+       {
+           configData = Config.ReadObject<PluginConfig>();
+       }
+
         #region Oxide
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
@@ -35,7 +63,7 @@ namespace Oxide.Plugins
 
                 foreach(var player in NearPlayers)
                 {
-                    if (player != null && player.IsConnected)
+                    if (player != null && player.IsConnected && configData.ShakeScreen)
                     {
                         for (int i = 0; i < 10; i++)
                             Effect.server.Run(ShakeEffect, player.transform.position);
