@@ -32,15 +32,14 @@ namespace Oxide.Plugins
         {
             public bool ShakeScreen;
         }
-       #endregion 
-
-       #region Oxide
-       private void Init()
-       {
-           configData = Config.ReadObject<PluginConfig>();
-       }
+        #endregion 
 
         #region Oxide
+        private void Init()
+        {
+           configData = Config.ReadObject<PluginConfig>();
+        }
+
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
             if (entity == null || info == null)
