@@ -24,13 +24,15 @@ namespace Oxide.Plugins
         {
             return new PluginConfig
             {
-                ShakeScreen = true
+                ShakeScreen   = true,
+                ShakeDsitance = 15
             };
         }
 
         private class PluginConfig
         {
             public bool ShakeScreen;
+            public int ShakeDistance;
         }
         #endregion 
 
@@ -47,26 +49,28 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (entity.ShortPrefabName != "oil_barrel")
+            {
+                return;
+            }
+
             string damageType = Enum.GetName(typeof(Rust.DamageType), info.damageTypes.GetMajorityDamageType());
             if (damageType != "Bullet")
             {
                 return;
             }
 
-            if (entity.ShortPrefabName == "oil_barrel")
+            Effect.server.Run(BarrelEffect, entity.transform.position, Vector3.zero, null, false);
+
+            List<BasePlayer> NearPlayers = new List<BasePlayer>();
+            Vis.Entities<BasePlayer>(entity.transform.position, configData.ShakeDistance, NearPlayers);
+
+            foreach(var player in NearPlayers)
             {
-                Effect.server.Run(BarrelEffect, entity.transform.position, Vector3.zero, null, false);
-
-                List<BasePlayer> NearPlayers = new List<BasePlayer>();
-                Vis.Entities<BasePlayer>(entity.transform.position, 15, NearPlayers);
-
-                foreach(var player in NearPlayers)
+                if (player != null && player.IsConnected && configData.ShakeScreen)
                 {
-                    if (player != null && player.IsConnected && configData.ShakeScreen)
-                    {
-                        for (int i = 0; i < 10; i++)
-                            Effect.server.Run(ShakeEffect, player.transform.position);
-                    }
+                    for (int i = 0; i < 10; i++)
+                        Effect.server.Run(ShakeEffect, player.transform.position);
                 }
             }
         }
