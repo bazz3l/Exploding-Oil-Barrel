@@ -25,7 +25,7 @@ namespace Oxide.Plugins
             return new PluginConfig
             {
                 ShakeScreen   = true,
-                ShakeDsitance = 15
+                ShakeDistance = 15
             };
         }
 
@@ -37,10 +37,7 @@ namespace Oxide.Plugins
         #endregion 
 
         #region Oxide
-        private void Init()
-        {
-           configData = Config.ReadObject<PluginConfig>();
-        }
+        private void Init() => configData = Config.ReadObject<PluginConfig>();
 
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
