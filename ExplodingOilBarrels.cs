@@ -7,10 +7,11 @@ using System.Collections.Generic;
 namespace Oxide.Plugins
 {
     [Info("Exploding oil barrel", "Bazz3l", "1.0.0")]
+    [Description("Exploding oil barrels with ground shake effect")]
     public class ExplodingOilBarrels : RustPlugin
     {
-        string BarrelEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
-        string ShakeEffect  = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
+        private const string BarrelEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
+        private const string ShakeEffect  = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
 
         #region Config
         private PluginConfig configData;
