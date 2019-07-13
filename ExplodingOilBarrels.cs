@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding oil barrel", "Bazz3l", "1.0.0")]
+    [Info("Exploding oil barrel", "Bazz3l", "1.0.2")]
     [Description("Exploding oil barrels with ground shake effect")]
     public class ExplodingOilBarrels : RustPlugin
     {
