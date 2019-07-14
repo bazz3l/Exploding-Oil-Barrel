@@ -6,9 +6,9 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding oil barrel", "Bazz3l", "1.0.2")]
+    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.2")]
     [Description("Exploding oil barrels with ground shake effect")]
-    public class ExplodingOilBarrels : RustPlugin
+    class ExplodingOilBarrels : RustPlugin
     {
         private const string BarrelEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
         private const string ShakeEffect  = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
@@ -40,7 +40,7 @@ namespace Oxide.Plugins
         #region Oxide
         private void Init() => configData = Config.ReadObject<PluginConfig>();
 
-        void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
+        private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
             if (entity == null || info == null)
             {
