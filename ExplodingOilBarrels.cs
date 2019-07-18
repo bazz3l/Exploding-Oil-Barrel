@@ -10,10 +10,9 @@ namespace Oxide.Plugins
     [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
-        public string ExplosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
-        public string FireEffect      = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
-        public string ShakeEffect     = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
-        public static ExplodingOilBarrels ins;
+        private const string ExplosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
+        private const string FireEffect = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
+        private const string ShakeEffect = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
 
         #region Config
         private PluginConfig configData;
@@ -27,14 +26,14 @@ namespace Oxide.Plugins
         {
             return new PluginConfig
             {
-                EnableShakeScreen    = true,
-                EnableExplosionForce = true,
-                EnablePlayerDamage   = true,
-                PlayerDamageDistance = 2f,
-                PlayerDamage         = 10f,
-                ShakeDistance        = 15f,
-                ExplosionDistance    = 15f,
-                ExplosionForce       = 10f
+                EnableShakeScreen      = true,
+                EnableExplosionForce   = true,
+                EnablePlayerDamage     = true,
+                PlayerDamageDistance   = 2f,
+                PlayerDamage           = 10f,
+                ShakeDistance          = 15f,
+                ExplosionForceDistance = 15f,
+                ExplosionForce         = 10f
             };
         }
 
@@ -47,17 +46,12 @@ namespace Oxide.Plugins
             public float PlayerDamage;
             public float ShakeDistance;
             public float ExplosionForce;
-            public float ExplosionDistance;
+            public float ExplosionForceDistance;
         }
         #endregion 
 
         #region Oxide
         private void Init() => configData = Config.ReadObject<PluginConfig>();
-
-        private void OnServerInitialized()
-        {
-            ins = this;
-        }
 
         private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
@@ -77,49 +71,32 @@ namespace Oxide.Plugins
                 return;
             }
 
-            entity.gameObject?.AddComponent<ExplosionComponent>();
-        }
-        #endregion
+            Effect.server.Run(ExplosionEffect, entity.transform.position, Vector3.zero, null, false);
+            Effect.server.Run(FireEffect, entity.transform.position, Vector3.zero, null, false);
 
-        #region Scripts
-        public class ExplosionComponent : MonoBehaviour
-        {
-            public BaseEntity entity;
-            public void Awake() => entity = GetComponent<BaseEntity>();
-            public void OnDestroy()
+            List<DroppedItem> ItemsDropped = new List<DroppedItem>();
+            Vis.Entities<DroppedItem>(entity.transform.position, configData.ExplosionDistance, ItemsDropped);
+            ItemsDropped.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
+            foreach(DroppedItem item in ItemsDropped)
             {
-                if (entity == null) 
-                {
-                    return;
-                }
+                if (configData.EnableExplosionForce)
+                    item?.GetComponent<Rigidbody>()?.AddExplosionForce(configData.ExplosionForce, entity.transform.position, configData.ExplosionForceDistance);
+            }
 
-                Effect.server.Run(ins.ExplosionEffect, entity.transform.position, Vector3.zero, null, false);
-                Effect.server.Run(ins.FireEffect, entity.transform.position, Vector3.zero, null, false);
-
-                List<DroppedItem> ItemsDropped = new List<DroppedItem>();
-                Vis.Entities<DroppedItem>(entity.transform.position, ins.configData.ExplosionDistance, ItemsDropped);
-                ItemsDropped.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
-                foreach(DroppedItem item in ItemsDropped)
+            List<BasePlayer> NearPlayers = new List<BasePlayer>();
+            Vis.Entities<BasePlayer>(entity.transform.position, configData.ShakeDistance, NearPlayers);
+            foreach(var player in NearPlayers)
+            {
+                if (player != null && player.IsConnected)
                 {
-                    if (ins.configData.EnableExplosionForce)
-                        item?.GetComponent<Rigidbody>()?.AddExplosionForce(ins.configData.ExplosionForce, entity.transform.position, ins.configData.ExplosionDistance);
-                }
+                    if (configData.EnablePlayerDamage && Vector3.Distance(player.transform.position, entity.transform.position) <= configData.PlayerDamageDistance)
+                        player.Hurt(configData.PlayerDamage);
 
-                List<BasePlayer> NearPlayers = new List<BasePlayer>();
-                Vis.Entities<BasePlayer>(entity.transform.position, ins.configData.ShakeDistance, NearPlayers);
-                foreach(var player in NearPlayers)
-                {
-                    if (player != null && player.IsConnected)
+                    if (configData.EnableShakeScreen && !player.IsDead())
                     {
-                        if (ins.configData.EnablePlayerDamage && Vector3.Distance(player.transform.position, entity.transform.position) <= ins.configData.PlayerDamageDistance)
-                            player.Hurt(ins.configData.PlayerDamage);
-
-                        if (ins.configData.EnableShakeScreen && !player.IsDead())
-                        {
-                            for (int i = 0; i < 10; i++)
-                               Effect.server.Run(ins.ShakeEffect, player.transform.position);
-                        }                  
-                    }
+                        for (int i = 0; i < 10; i++)
+                           Effect.server.Run(ShakeEffect, player.transform.position);
+                    }                  
                 }
             }
         }
