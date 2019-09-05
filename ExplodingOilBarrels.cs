@@ -75,7 +75,7 @@ namespace Oxide.Plugins
             Effect.server.Run(FireEffect, entity.transform.position, Vector3.zero, null, false);
 
             List<DroppedItem> ItemsDropped = new List<DroppedItem>();
-            Vis.Entities<DroppedItem>(entity.transform.position, configData.ExplosionDistance, ItemsDropped);
+            Vis.Entities<DroppedItem>(entity.transform.position, configData.ExplosionForceDistance, ItemsDropped);
             ItemsDropped.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
             foreach(DroppedItem item in ItemsDropped)
             {
