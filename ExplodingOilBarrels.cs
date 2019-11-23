@@ -6,16 +6,16 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.4")]
+    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.5")]
     [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
         private const string ExplosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
-        private const string FireEffect = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
-        private const string ShakeEffect = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
+        private const string ShakeEffect     = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
+        private const string FireEffect      = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
 
         #region Config
-        private PluginConfig configData;
+        private PluginConfig config;
 
         protected override void LoadDefaultConfig()
         {
@@ -51,52 +51,58 @@ namespace Oxide.Plugins
         #endregion 
 
         #region Oxide
-        private void Init() => configData = Config.ReadObject<PluginConfig>();
+        private void Init() => config = Config.ReadObject<PluginConfig>();
 
         private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
-            if (entity == null || info == null)
-            {
-                return;
-            }
-
-            if (entity.ShortPrefabName != "oil_barrel")
-            {
-                return;
-            }
+            if (entity == null || info == null) return;
+            if (entity.ShortPrefabName != "oil_barrel") return;
 
             string damageType = Enum.GetName(typeof(Rust.DamageType), info.damageTypes.GetMajorityDamageType());
-            if (damageType != "Bullet")
-            {
-                return;
-            }
+            if (damageType != "Bullet") return;
 
             Effect.server.Run(ExplosionEffect, entity.transform.position, Vector3.zero, null, false);
-            Effect.server.Run(FireEffect, entity.transform.position, Vector3.zero, null, false);
+            Effect.server.Run(FireEffect,      entity.transform.position, Vector3.zero, null, false);
 
-            List<DroppedItem> ItemsDropped = new List<DroppedItem>();
-            Vis.Entities<DroppedItem>(entity.transform.position, configData.ExplosionForceDistance, ItemsDropped);
-            ItemsDropped.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
-            foreach(DroppedItem item in ItemsDropped)
+            ExplosionForce(entity);
+            PlayerDamage(entity);
+        }
+
+        void ExplosionForce(BaseCombatEntity entity)
+        {
+            List<DroppedItem> Items = new List<DroppedItem>();
+
+            Vis.Entities<DroppedItem>(entity.transform.position, config.ExplosionForceDistance, Items);
+
+            Items.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
+
+            foreach(DroppedItem item in Items)
             {
-                if (configData.EnableExplosionForce)
-                    item?.GetComponent<Rigidbody>()?.AddExplosionForce(configData.ExplosionForce, entity.transform.position, configData.ExplosionForceDistance);
+                if (config.EnableExplosionForce)
+                    item?.GetComponent<Rigidbody>()?.AddExplosionForce(config.ExplosionForce, entity.transform.position, config.ExplosionForceDistance);
             }
+        }
 
-            List<BasePlayer> NearPlayers = new List<BasePlayer>();
-            Vis.Entities<BasePlayer>(entity.transform.position, configData.ShakeDistance, NearPlayers);
-            foreach(var player in NearPlayers)
+        void PlayerDamage(BaseCombatEntity entity)
+        {
+            List<BasePlayer> Players = new List<BasePlayer>();
+
+            Vis.Entities<BasePlayer>(entity.transform.position, config.ShakeDistance, Players);
+
+            foreach(BasePlayer player in Players)
             {
-                if (player != null && player.IsConnected)
-                {
-                    if (configData.EnablePlayerDamage && Vector3.Distance(player.transform.position, entity.transform.position) <= configData.PlayerDamageDistance)
-                        player.Hurt(configData.PlayerDamage);
+                if (player == null || !player.IsConnected) continue;
 
-                    if (configData.EnableShakeScreen && !player.IsDead())
-                    {
-                        for (int i = 0; i < 10; i++)
-                           Effect.server.Run(ShakeEffect, player.transform.position);
-                    }                  
+                Vector3 pos    = player.transform.position;
+                float distance = Vector3.Distance(pos, entity.transform.position);
+
+                if (config.EnablePlayerDamage && distance <= config.PlayerDamageDistance)
+                    player.Hurt(config.PlayerDamage);
+
+                if (config.EnableShakeScreen && !player.IsDead())
+                {
+                    for (int i = 0; i < 10; i++)
+                       Effect.server.Run(ShakeEffect, pos);
                 }
             }
         }
