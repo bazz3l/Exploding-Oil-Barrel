@@ -1,43 +1,38 @@
 using System.Collections.Generic; 
-using System;
 using Rust;
 using UnityEngine;
-using Oxide.Core.Plugins;
-using Newtonsoft.Json.Linq;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.5")]
-    [Description("Exploding oil barrels with explosion force, player damage and shake effect")]
+    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.6")]
+    [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
-        #region Fields
-        private const string ExplosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
-        private const string ShakeEffect     = "assets/bundled/prefabs/fx/takedamage_generic.prefab";
-        private const string FireEffect      = "assets/bundled/prefabs/fx/gas_explosion_small.prefab";
-        #endregion
+        const string _explosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
+        const string _fireEffect = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
+        const string _shakeEffect = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
 
         #region Config
-        private PluginConfig config;
+        PluginConfig _config;
 
         protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
 
-        private PluginConfig GetDefaultConfig()
+        PluginConfig GetDefaultConfig()
         {
             return new PluginConfig
             {
-                EnableShakeScreen      = true,
-                EnableExplosionForce   = true,
-                EnablePlayerDamage     = true,
-                PlayerDamageDistance   = 2f,
-                PlayerDamage           = 10f,
-                ShakeDistance          = 20f,
-                ExplosionForceDistance = 20f,
-                ExplosionForce         = 10f
+                EnableShakeScreen = true,
+                EnableExplosionForce = true,
+                EnablePlayerDamage = true,
+                PlayerDamageDistance = 2f,
+                PlayerDamage = 10f,
+                ShakeDistance = 20f,
+                ExplosionDistance = 20f,
+                ExplosionForce = 50f
             };
         }
 
-        private class PluginConfig
+        class PluginConfig
         {
             public bool EnableShakeScreen;
             public bool EnableExplosionForce;
@@ -46,73 +41,80 @@ namespace Oxide.Plugins
             public float PlayerDamage;
             public float ShakeDistance;
             public float ExplosionForce;
-            public float ExplosionForceDistance;
+            public float ExplosionDistance;
         }
-        #endregion
+        #endregion 
 
         #region Oxide
         void Init()
         {
-            config = Config.ReadObject<PluginConfig>();
+            _config = Config.ReadObject<PluginConfig>();
         }
 
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
-            if (entity == null || info == null || entity.ShortPrefabName != "oil_barrel") return;
+            if (entity == null || info == null) return;
+            if (entity.ShortPrefabName != "oil_barrel" || info.damageTypes.GetMajorityDamageType() != DamageType.Bullet) return;
 
-            string damageType = Enum.GetName(typeof(Rust.DamageType), info.damageTypes.GetMajorityDamageType());
-            if (damageType != "Bullet") return;
+            PlayExplosion(entity.transform.position);
+            PlayerInRange(entity.transform.position);
 
-            Effect.server.Run(ExplosionEffect, entity.transform.position, Vector3.zero, null, false);
-            Effect.server.Run(FireEffect, entity.transform.position, Vector3.zero, null, false);
+            if (_config.EnableExplosionForce)
+            {
+                MoveItems(entity.transform.position);
+            }
+        }
+        #endregion
 
-            ExplosionForce(entity);
-            PlayerDamage(entity);
+        #region Core
+        void PlayExplosion(Vector3 position)
+        {
+            Effect.server.Run(_explosionEffect, position, Vector3.zero, null, false);
+            Effect.server.Run(_fireEffect, position, Vector3.zero, null, false);
         }
 
-        void ExplosionForce(BaseCombatEntity entity)
+        void MoveItems(Vector3 position)
         {
-            List<DroppedItem> Items = new List<DroppedItem>();
+            List<DroppedItem> droppedItems = new List<DroppedItem>();
 
-            Vis.Entities<DroppedItem>(entity.transform.position, config.ExplosionForceDistance, Items);
+            Vis.Entities<DroppedItem>(position, _config.ExplosionDistance, droppedItems);
 
-            Items.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(entity.transform.position));
+            droppedItems.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(position));
 
-            foreach(DroppedItem item in Items)
+            foreach(DroppedItem item in droppedItems)
             {
-                if (config.EnableExplosionForce)
-                    item.GetComponent<Rigidbody>()?.AddExplosionForce(config.ExplosionForce, entity.transform.position, config.ExplosionForceDistance);
+                item.GetComponent<Rigidbody>()?.AddExplosionForce(_config.ExplosionForce, position, _config.ExplosionDistance);
             }
         }
 
-        void PlayerDamage(BaseCombatEntity entity)
+        void PlayerInRange(Vector3 position)
         {
-            List<BasePlayer> Players = new List<BasePlayer>();
+            List<BasePlayer> players = new List<BasePlayer>();
 
-            Vis.Entities<BasePlayer>(entity.transform.position, config.ShakeDistance, Players);
+            Vis.Entities<BasePlayer>(position, _config.ShakeDistance, players);
 
-            foreach(BasePlayer player in Players)
+            foreach(BasePlayer player in players)
             {
-                if (player == null || !player.IsConnected) continue;
+                if (_config.EnablePlayerDamage && Vector3.Distance(player.transform.position, position) <= _config.PlayerDamageDistance)
+                {
+                    DamagePlayer(player, position);
+                }
 
-                Vector3 pos    = player.transform.position;
-                float distance = Vector3.Distance(pos, entity.transform.position);
-
-                if (config.EnablePlayerDamage && distance <= config.PlayerDamageDistance)
-                    player.Hurt(config.PlayerDamage);
-
-                if (!config.EnableShakeScreen) continue;
-
-                for (int i = 0; i < 10; i++)
-                    SendEffect(ShakeEffect, player);
+                if (_config.EnableShakeScreen)
+                {
+                    PlayerShake(player);
+                }
             }
         }
 
-        private void SendEffect(string name, BasePlayer player, Vector3 position = new Vector3(), Vector3 offset = new Vector3())
-        {
-            if (player == null || player.IsDead() || player.IsSleeping()) return;
+        void DamagePlayer(BasePlayer player, Vector3 position) => player.Hurt(_config.PlayerDamage);
 
-            Effect.server.Run(name, player, 0, offset, position);
+        void PlayerShake(BasePlayer player)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                Effect.server.Run(_shakeEffect, player.transform.position);
+            }
         }
         #endregion
     }
