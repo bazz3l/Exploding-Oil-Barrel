@@ -55,15 +55,9 @@ namespace Oxide.Plugins
 
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
-            if (entity == null || info == null)
-            {
-                return;
-            }
+            if (entity == null || info == null) return;
 
-            if (entity.ShortPrefabName != "oil_barrel" || info.damageTypes.GetMajorityDamageType() != DamageType.Bullet)
-            {
-                return;
-            }
+            if (!(entity.ShortPrefabName == "oil_barrel" && info.damageTypes.GetMajorityDamageType() == DamageType.Bullet)) return;
 
             PlayExplosion(entity.transform.position);
             PlayerInRange(entity.transform.position);
@@ -120,7 +114,7 @@ namespace Oxide.Plugins
 
         void PlayerShake(BasePlayer player)
         {
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 10; i++)
             {
                 Effect.server.Run(_shakeEffect, player.transform.position);
             }
