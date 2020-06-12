@@ -1,10 +1,11 @@
 using System.Collections.Generic; 
 using Rust;
 using UnityEngine;
+using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.6")]
+    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.7")]
     [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
@@ -29,21 +30,40 @@ namespace Oxide.Plugins
                 PlayerDamageDistance = 2f,
                 PlayerDamage = 10f,
                 ShakeDistance = 20f,
-                ExplosionDistance = 20f,
+                ExplosionItemDistance = 20f,
+                ExplosionRange = 50f,
                 ExplosionForce = 50f
             };
         }
 
         class PluginConfig
         {
+            [JsonProperty(PropertyName = "Screen shake effect for explosion")]
             public bool EnableShakeScreen;
+
+            [JsonProperty(PropertyName = "Moves items in range of explosion")]
             public bool EnableExplosionForce;
+
+            [JsonProperty(PropertyName = "Deal damage to players in distance of explosion")]
             public bool EnablePlayerDamage;
+
+            [JsonProperty(PropertyName = "ditance to deal damage to players")]
             public float PlayerDamageDistance;
+
+            [JsonProperty(PropertyName = "amount of damage delt to players in range")]
             public float PlayerDamage;
+
+            [JsonProperty(PropertyName = "distance shake will effect players from explosion")]
             public float ShakeDistance;
+
+            [JsonProperty(PropertyName = "amount of force delt to object in range")]
             public float ExplosionForce;
-            public float ExplosionDistance;
+
+            [JsonProperty(PropertyName = "distance to find object near explosion")]
+            public float ExplosionItemDistance;
+
+            [JsonProperty(PropertyName = "distance to find targets near explosion")]
+            public float ExplosionRange;
         }
         #endregion 
 
@@ -80,13 +100,13 @@ namespace Oxide.Plugins
         {
             List<DroppedItem> droppedItems = new List<DroppedItem>();
 
-            Vis.Entities<DroppedItem>(position, _config.ExplosionDistance, droppedItems);
+            Vis.Entities<DroppedItem>(position, _config.ExplosionItemDistance, droppedItems);
 
             droppedItems.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(position));
 
             foreach(DroppedItem item in droppedItems)
             {
-                item.GetComponent<Rigidbody>()?.AddExplosionForce(_config.ExplosionForce, position, _config.ExplosionDistance);
+                item.GetComponent<Rigidbody>()?.AddExplosionForce(_config.ExplosionForce, position, _config.ExplosionItemDistance);
             }
         }
 
@@ -94,7 +114,7 @@ namespace Oxide.Plugins
         {
             List<BasePlayer> players = new List<BasePlayer>();
 
-            Vis.Entities<BasePlayer>(position, _config.ShakeDistance, players);
+            Vis.Entities<BasePlayer>(position, _config.ExplosionRange, players);
 
             foreach(BasePlayer player in players)
             {
@@ -103,7 +123,7 @@ namespace Oxide.Plugins
                     DamagePlayer(player, position);
                 }
 
-                if (_config.EnableShakeScreen && Vector3.Distance(player.transform.position, position) <= _config.ExplosionDistance)
+                if (_config.EnableShakeScreen && Vector3.Distance(player.transform.position, position) <= _config.ShakeDistance)
                 {
                     PlayerShake(player);
                 }
