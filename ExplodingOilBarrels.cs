@@ -8,13 +8,15 @@ namespace Oxide.Plugins
     [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
+        #region Fields
         const string _explosionEffect = "assets/bundled/prefabs/fx/explosions/explosion_03.prefab";
         const string _fireEffect = "assets/bundled/prefabs/fx/gas_explosion_small.prefab"; 
         const string _shakeEffect = "assets/prefabs/weapons/thompson/effects/attack_shake.prefab";
 
-        #region Config
         PluginConfig _config;
+        #endregion
 
+        #region Config
         protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
 
         PluginConfig GetDefaultConfig()
@@ -53,8 +55,15 @@ namespace Oxide.Plugins
 
         void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
-            if (entity == null || info == null) return;
-            if (entity.ShortPrefabName != "oil_barrel" || info.damageTypes.GetMajorityDamageType() != DamageType.Bullet) return;
+            if (entity == null || info == null)
+            {
+                return;
+            }
+
+            if (entity.ShortPrefabName != "oil_barrel" || info.damageTypes.GetMajorityDamageType() != DamageType.Bullet)
+            {
+                return;
+            }
 
             PlayExplosion(entity.transform.position);
             PlayerInRange(entity.transform.position);
@@ -100,7 +109,7 @@ namespace Oxide.Plugins
                     DamagePlayer(player, position);
                 }
 
-                if (_config.EnableShakeScreen)
+                if (_config.EnableShakeScreen && Vector3.Distance(player.transform.position, position) <= _config.ExplosionDistance)
                 {
                     PlayerShake(player);
                 }
