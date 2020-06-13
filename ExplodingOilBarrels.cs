@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.7")]
+    [Info("Exploding Oil Barrel", "Bazz3l", "1.0.8")]
     [Description("Exploding oil barrels with explosion force, player damage and ground shake effect")]
     class ExplodingOilBarrels : RustPlugin
     {
@@ -29,9 +29,9 @@ namespace Oxide.Plugins
                 EnablePlayerDamage = true,
                 PlayerDamageDistance = 2f,
                 PlayerDamage = 10f,
-                ShakeDistance = 20f,
-                ExplosionItemDistance = 20f,
-                ExplosionRange = 50f,
+                ShakeDistance = 50f,
+                ExplosionForceDistance = 20f,
+                ExplosionPlayerRange = 50f,
                 ExplosionForce = 50f
             };
         }
@@ -59,11 +59,11 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "amount of force delt to object in range")]
             public float ExplosionForce;
 
-            [JsonProperty(PropertyName = "distance to find object near explosion")]
-            public float ExplosionItemDistance;
+            [JsonProperty(PropertyName = "distance to find objects near explosion and add force")]
+            public float ExplosionForceDistance;
 
-            [JsonProperty(PropertyName = "distance to find targets near explosion")]
-            public float ExplosionRange;
+            [JsonProperty(PropertyName = "distance to find player targets near explosion")]
+            public float ExplosionPlayerRange;
         }
         #endregion 
 
@@ -100,13 +100,13 @@ namespace Oxide.Plugins
         {
             List<DroppedItem> droppedItems = new List<DroppedItem>();
 
-            Vis.Entities<DroppedItem>(position, _config.ExplosionItemDistance, droppedItems);
+            Vis.Entities<DroppedItem>(position, _config.ExplosionForceDistance, droppedItems);
 
             droppedItems.RemoveAll(item => item == null || item.IsDestroyed || !item.IsVisible(position));
 
             foreach(DroppedItem item in droppedItems)
             {
-                item.GetComponent<Rigidbody>()?.AddExplosionForce(_config.ExplosionForce, position, _config.ExplosionItemDistance);
+                item.GetComponent<Rigidbody>()?.AddExplosionForce(_config.ExplosionForce, position, _config.ExplosionForceDistance);
             }
         }
 
@@ -114,7 +114,7 @@ namespace Oxide.Plugins
         {
             List<BasePlayer> players = new List<BasePlayer>();
 
-            Vis.Entities<BasePlayer>(position, _config.ExplosionRange, players);
+            Vis.Entities<BasePlayer>(position, _config.ExplosionPlayerRange, players);
 
             foreach(BasePlayer player in players)
             {
